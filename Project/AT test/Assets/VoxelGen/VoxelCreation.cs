@@ -9,6 +9,7 @@ public class VoxelCreation : MonoBehaviour {
 	[Header("Other Variables")]
 	public GameObject player;
 	public int textureType = 0;
+	public Vector2 playerPos;
 
 	[Space(20)]
 	[Header("StreamData")]
@@ -38,6 +39,21 @@ public class VoxelCreation : MonoBehaviour {
 
 	bool firstLoad = true;
 
+	bool testEmpty(chunk _chunk) {
+		for (int a = 0; a < sizeOfChunk.x; a++) {
+			for (int b = 0; b < sizeOfChunk.y; b++) {
+				for (int c = 0; c < chunkHeight; c++) {
+					if (c != 0) {
+						if (!_chunk.voxels [a, b, c].destroyed) {
+							return false;
+						}
+					}
+				}
+			}
+		}
+		return true;
+	}
+
 	List<chunk> loadChunk(Vector2 pos, chunk currentChunk) {
 		string filename = pos.ToString();
 		List<chunk> visibilityCheck = new List<chunk> ();
@@ -49,7 +65,9 @@ public class VoxelCreation : MonoBehaviour {
 		if (File.Exists(Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt")) {
 			StreamReader reader = new StreamReader (Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt", true);
 
-			if (reader.ReadLine () != sizeOfChunk.x.ToString() || reader.ReadLine() != sizeOfChunk.y.ToString()) {
+			if (reader.ReadLine () != sizeOfChunk.x.ToString() || reader.ReadLine() != sizeOfChunk.y.ToString()
+				|| reader.ReadLine() != voxelSize.x.ToString() || reader.ReadLine() != voxelSize.y.ToString() || reader.ReadLine() != voxelSize.z.ToString()
+				|| reader.ReadLine() != chunkHeight.ToString()) {
 				reader.Close ();
 				File.Delete (Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt");
 				return visibilityCheck;
@@ -60,6 +78,9 @@ public class VoxelCreation : MonoBehaviour {
 			currentChunk.chunkPos = pos;
 
 			currentChunk.voxels = new voxel[(int)sizeOfChunk.x, (int)sizeOfChunk.y, (int)chunkHeight];
+
+			int loop = 0;
+			int currentTexId = -2;
 
 			for (int a = 0; a < sizeOfChunk.x; a++) {
 				for (int b = 0; b < sizeOfChunk.y; b++) {
@@ -72,8 +93,19 @@ public class VoxelCreation : MonoBehaviour {
 							generateVoxel (currentChunk, new vec3I (a, c, b), 0);
 							break;
 						case 1:
-							int texId = int.Parse (reader.ReadLine ());
-							generateVoxel (currentChunk, new vec3I (a, c, b), texId);
+							if (loop == 0) {
+								string line = reader.ReadLine ();
+								if (line == "n") {
+									loop = int.Parse (reader.ReadLine ());
+									currentTexId = int.Parse (reader.ReadLine ());
+								} else {
+									generateVoxel (currentChunk, new vec3I (a, c, b), int.Parse (line));
+								}
+							} 
+							if (loop != 0) {
+								generateVoxel (currentChunk, new vec3I (a, c, b), currentTexId);
+								loop--;
+							}
 							break;
 						}
 					}
@@ -82,48 +114,6 @@ public class VoxelCreation : MonoBehaviour {
 
 			visibilityCheck = setupChunkNeighbours (currentChunk);
 			visibilityCheck.Add (currentChunk);
-
-			//visibilityCheck = generateChunkVoxels (currentChunk);
-
-			/*
-			bool continueToRead = true;
-
-			do {
-				continueToRead = false;
-				string action = reader.ReadLine();
-
-				if (action == null) {
-					break;
-				}
-
-				int x = int.Parse(reader.ReadLine());
-				int y = int.Parse(reader.ReadLine());
-				int z = int.Parse(reader.ReadLine());
-
-				voxel _voxel = currentChunk.voxels[x,z,y];
-
-
-				if (action == "p") {
-					
-					_voxel.texId = int.Parse(reader.ReadLine());
-					if (!_voxel.destroyed) {
-						if (_voxel.obj != null) {
-							_voxel.obj.GetComponent<MeshRenderer> ().material = voxelMaterial[_voxel.texId];
-						}
-					}
-
-					continueToRead = true;
-				} else if (action == "d") {
-
-					destroyVoxel(_voxel);
-
-					continueToRead = true;
-				} else {
-					continueToRead = false;
-				}
-
-			} while (continueToRead);
-			*/
 
 			reader.Close ();
 
@@ -145,44 +135,51 @@ public class VoxelCreation : MonoBehaviour {
 			File.Delete (Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt");
 		}
 
+		//test chunkState
+		if (testEmpty (_chunk)) {
+			_chunk.chunkState = -1;
+		}
+
 		StreamWriter writer = new StreamWriter (Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt");
 
 		writer.WriteLine (sizeOfChunk.x);
 		writer.WriteLine (sizeOfChunk.y);
-		writer.WriteLine (1);
+		writer.WriteLine (voxelSize.x);
+		writer.WriteLine (voxelSize.y);
+		writer.WriteLine (voxelSize.z);
+		writer.WriteLine (chunkHeight);
+		writer.WriteLine (_chunk.chunkState);
 
-		for (int a = 0; a < sizeOfChunk.x; a++) {
-			for (int b = 0; b < sizeOfChunk.y; b++) {
-				for (int c = 0; c < chunkHeight; c++) {
-					if (_chunk.voxels [a, b, c].destroyed) {
-						/*
-						writer.WriteLine ("d");
-						writer.WriteLine (a);
-						writer.WriteLine (c);
-						writer.WriteLine (b);
-						*/
-						writer.WriteLine (-1);
-					} else {
-						/*
-						writer.WriteLine ("p");
-						writer.WriteLine (a);
-						writer.WriteLine (c);
-						writer.WriteLine (b);
-						*/
-						writer.WriteLine (_chunk.voxels [a, b, c].texId);
-						/*
-						writer.WriteLine (_chunk.voxels [a, b, c].texId);
-						if (_chunk.voxels [a, b, c].placed) {
-							writer.WriteLine ("p");
-							writer.WriteLine (a);
-							writer.WriteLine (c);
-							writer.WriteLine (b);
+		if (_chunk.chunkState != -1) {
+
+			int loop = 0;
+			int prevTexId = -3;
+
+			for (int a = 0; a < sizeOfChunk.x; a++) {
+				for (int b = 0; b < sizeOfChunk.y; b++) {
+					for (int c = 0; c < chunkHeight; c++) {
+
+						//writer.WriteLine (_chunk.voxels [a, b, c].texId);
+
+						if (_chunk.voxels [a, b, c].texId == prevTexId) {
+							loop++;
+						}
+						if (_chunk.voxels [a, b, c].texId != prevTexId
+						   || (a == sizeOfChunk.x - 1 && b == sizeOfChunk.y - 1 && c == chunkHeight - 1)) {
+							if (loop != 0) {
+								writer.WriteLine ("n");
+								writer.WriteLine (loop);
+								writer.WriteLine (prevTexId);
+								loop = 0;
+							} 
+							prevTexId = _chunk.voxels [a, b, c].texId;
 							writer.WriteLine (_chunk.voxels [a, b, c].texId);
 						}
-						*/
+
 					}
 				}
 			}
+
 		}
 
 		writer.Close ();
@@ -249,6 +246,12 @@ public class VoxelCreation : MonoBehaviour {
 			parent.voxels [pos.x, pos.z, pos.y].texId = 0;
 		} else {
 			parent.voxels [pos.x, pos.z, pos.y].texId = texId;
+		}
+
+		if (pos.y == 0) {
+			parent.voxels [pos.x, pos.z, pos.y].destroyed = false;
+			parent.voxels [pos.x, pos.z, pos.y].destroyable = false;
+			parent.voxels [pos.x, pos.z, pos.y].texId = 0;
 		}
 	}
 
@@ -447,7 +450,7 @@ public class VoxelCreation : MonoBehaviour {
 
 	void Update() {
 
-		Vector2 playerPos = new Vector2(Mathf.Floor((player.transform.position.x + (voxelSize.x / 2)) / (sizeOfChunk.x * voxelSize.x)),
+		playerPos = new Vector2(Mathf.Floor((player.transform.position.x + (voxelSize.x / 2)) / (sizeOfChunk.x * voxelSize.x)),
 			Mathf.Floor((player.transform.position.z + (voxelSize.z / 2)) / (sizeOfChunk.y * voxelSize.z)));
 
 		List<chunk> toDelete = new List<chunk>();
@@ -616,6 +619,8 @@ public class VoxelCreation : MonoBehaviour {
 
 		voxel vox = _chunk.voxels[voxelToChange.x, voxelToChange.z, voxelToChange.y];
 
+		_chunk.chunkState = 1;
+
 		if (vox.destroyed) {
 			vox.destroyed = false;
 			vox.placed = true;
@@ -769,14 +774,18 @@ public class VoxelCreation : MonoBehaviour {
 	}
 
 	void destroyVoxel(voxel _voxel) {
-		GameObject.Destroy(_voxel.obj);
-		_voxel.destroyed = true;
-		_voxel.parent.chunkEdited = true;
-		_voxel.placed = false;
+		if (_voxel.destroyable) {
+			GameObject.Destroy (_voxel.obj);
+			_voxel.destroyed = true;
+			_voxel.parent.chunkEdited = true;
+			_voxel.placed = false;
+			_voxel.parent.chunkState = 1;
+			_voxel.texId = -2;
 
-		foreach (voxel vox in findNeighbours(_voxel.pos, _voxel.parent)) {
-			if (!vox.destroyed) {
-				voxelVisible (vox, true);
+			foreach (voxel vox in findNeighbours(_voxel.pos, _voxel.parent)) {
+				if (!vox.destroyed) {
+					voxelVisible (vox, true);
+				}
 			}
 		}
 	}
@@ -791,6 +800,7 @@ public class voxel {
 	public Vector3 pos;
 	public bool placed;
 	public bool destroyed;
+	public bool destroyable;
 	public int texId;
 
 	public voxel () {
@@ -800,6 +810,7 @@ public class voxel {
 		placed = false;
 		destroyed = false;
 		texId = 0;
+		destroyable = true;
 	}
 }
 
