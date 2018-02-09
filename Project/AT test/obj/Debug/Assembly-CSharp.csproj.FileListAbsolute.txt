@@ -30,3 +30,35 @@ D:\Desktop\AT texture streaming\Project\AT test\obj\Debug\Assembly-CSharp.dll
 D:\Desktop\AT texture streaming\Project\AT test\obj\Debug\Assembly-CSharp.pdb
 D:\Desktop\AT texture streaming\Project\AT test\obj\Debug\Assembly-CSharp.csprojResolveAssemblyReference.cache
 D:\Desktop\AT texture streaming\Project\AT test\Temp\bin\Debug\Assembly-CSharp-firstpass.pdb
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Assembly-CSharp.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Assembly-CSharp.pdb
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\nunit.framework.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEditor.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.Analytics.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.HoloLens.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.Networking.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.TestRunner.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.UI.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.VR.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Mono.Cecil.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Unity.SerializationLogic.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Unity.DataContract.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\ICSharpCode.NRefactory.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Unity.UNetWeaver.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Unity.CecilTools.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Mono.Cecil.Pdb.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Mono.Cecil.Mdb.dll
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Assembly-CSharp-firstpass.pdb
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.xml
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEditor.xml
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.UI.xml
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.Networking.xml
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.TestRunner.xml
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\nunit.framework.xml
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.Analytics.xml
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.HoloLens.xml
+H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.VR.xml
+H:\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.csprojResolveAssemblyReference.cache
+H:\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.dll
+H:\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.pdb

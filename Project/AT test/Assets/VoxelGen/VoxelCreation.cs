@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using System;
 using UnityEngine;
 
@@ -9,6 +8,7 @@ public class VoxelCreation : MonoBehaviour {
 
 	[Header("Other Variables")]
 	public GameObject player;
+	public int textureType = 0;
 
 	[Space(20)]
 	[Header("StreamData")]
@@ -42,6 +42,10 @@ public class VoxelCreation : MonoBehaviour {
 		string filename = pos.ToString();
 		List<chunk> visibilityCheck = new List<chunk> ();
 
+		if (!Directory.Exists(Application.dataPath + Path.DirectorySeparatorChar + directory)) {
+			Directory.CreateDirectory (Application.dataPath + Path.DirectorySeparatorChar + directory);
+		}
+
 		if (File.Exists(Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt")) {
 			StreamReader reader = new StreamReader (Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt", true);
 
@@ -51,10 +55,37 @@ public class VoxelCreation : MonoBehaviour {
 				return visibilityCheck;
 			}
 
+			int chunkData = int.Parse(reader.ReadLine ());
+
 			currentChunk.chunkPos = pos;
 
-			visibilityCheck = generateChunkVoxels (currentChunk);
+			currentChunk.voxels = new voxel[(int)sizeOfChunk.x, (int)sizeOfChunk.y, (int)chunkHeight];
 
+			for (int a = 0; a < sizeOfChunk.x; a++) {
+				for (int b = 0; b < sizeOfChunk.y; b++) {
+					for (int c = 0; c < chunkHeight; c++) {
+						switch (chunkData) {
+						case -1:
+							generateVoxel (currentChunk, new vec3I (a, c, b), -2);
+							break;
+						case 0:
+							generateVoxel (currentChunk, new vec3I (a, c, b), 0);
+							break;
+						case 1:
+							int texId = int.Parse (reader.ReadLine ());
+							generateVoxel (currentChunk, new vec3I (a, c, b), texId);
+							break;
+						}
+					}
+				}
+			}
+
+			visibilityCheck = setupChunkNeighbours (currentChunk);
+			visibilityCheck.Add (currentChunk);
+
+			//visibilityCheck = generateChunkVoxels (currentChunk);
+
+			/*
 			bool continueToRead = true;
 
 			do {
@@ -70,6 +101,7 @@ public class VoxelCreation : MonoBehaviour {
 				int z = int.Parse(reader.ReadLine());
 
 				voxel _voxel = currentChunk.voxels[x,z,y];
+
 
 				if (action == "p") {
 					
@@ -91,6 +123,7 @@ public class VoxelCreation : MonoBehaviour {
 				}
 
 			} while (continueToRead);
+			*/
 
 			reader.Close ();
 
@@ -104,6 +137,10 @@ public class VoxelCreation : MonoBehaviour {
 	bool saveChunk(chunk _chunk) {
 		string filename = _chunk.chunkPos.ToString();
 
+		if (!Directory.Exists(Application.dataPath + Path.DirectorySeparatorChar + directory)) {
+			Directory.CreateDirectory (Application.dataPath + Path.DirectorySeparatorChar + directory);
+		}
+
 		if (File.Exists(Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt")) {
 			File.Delete (Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar + filename + ".txt");
 		}
@@ -112,16 +149,29 @@ public class VoxelCreation : MonoBehaviour {
 
 		writer.WriteLine (sizeOfChunk.x);
 		writer.WriteLine (sizeOfChunk.y);
+		writer.WriteLine (1);
 
 		for (int a = 0; a < sizeOfChunk.x; a++) {
 			for (int b = 0; b < sizeOfChunk.y; b++) {
 				for (int c = 0; c < chunkHeight; c++) {
 					if (_chunk.voxels [a, b, c].destroyed) {
+						/*
 						writer.WriteLine ("d");
 						writer.WriteLine (a);
 						writer.WriteLine (c);
 						writer.WriteLine (b);
+						*/
+						writer.WriteLine (-1);
 					} else {
+						/*
+						writer.WriteLine ("p");
+						writer.WriteLine (a);
+						writer.WriteLine (c);
+						writer.WriteLine (b);
+						*/
+						writer.WriteLine (_chunk.voxels [a, b, c].texId);
+						/*
+						writer.WriteLine (_chunk.voxels [a, b, c].texId);
 						if (_chunk.voxels [a, b, c].placed) {
 							writer.WriteLine ("p");
 							writer.WriteLine (a);
@@ -129,6 +179,7 @@ public class VoxelCreation : MonoBehaviour {
 							writer.WriteLine (b);
 							writer.WriteLine (_chunk.voxels [a, b, c].texId);
 						}
+						*/
 					}
 				}
 			}
@@ -185,28 +236,26 @@ public class VoxelCreation : MonoBehaviour {
 		return true;
 	}
 
-	List<chunk> generateChunkVoxels(chunk _chunk) {
+	void generateVoxel(chunk parent, vec3I pos, int texId) {
+		parent.voxels [pos.x, pos.z, pos.y] = new voxel();
+
+		parent.voxels [pos.x, pos.z, pos.y].parent = parent;
+
+		parent.voxels [pos.x, pos.z, pos.y].pos = new Vector3 (pos.x * voxelSize.x, pos.y * voxelSize.y, pos.z * voxelSize.z) + new Vector3(parent.chunkPos.x * sizeOfChunk.x * voxelSize.x, 0, parent.chunkPos.y * sizeOfChunk.y * voxelSize.z);
+
+		if (texId == -2) {
+			parent.voxels [pos.x, pos.z, pos.y].destroyed = true;
+		} else if (texId == -1) {
+			parent.voxels [pos.x, pos.z, pos.y].texId = 0;
+		} else {
+			parent.voxels [pos.x, pos.z, pos.y].texId = texId;
+		}
+	}
+
+	List<chunk> setupChunkNeighbours(chunk _chunk) {
 
 		List<chunk> visibilityCheck = new List<chunk> ();
-
-		_chunk.voxels = new voxel[(int)sizeOfChunk.x, (int)sizeOfChunk.y, (int)chunkHeight];
-
-		for (int a = 0; a < sizeOfChunk.x; a++) {
-			for (int b = 0; b < sizeOfChunk.y; b++) {
-				for (int c = 0; c < chunkHeight; c++) {
-
-					_chunk.voxels [a, b, c] = new voxel();
-
-					_chunk.voxels [a, b, c].parent = _chunk;
-
-					_chunk.voxels [a, b, c].pos = new Vector3 (a * voxelSize.x, c * voxelSize.y, b * voxelSize.z) + new Vector3(_chunk.chunkPos.x * sizeOfChunk.x * voxelSize.x, 0, _chunk.chunkPos.y * sizeOfChunk.y * voxelSize.z);
-
-					_chunk.voxels [a, b, c].texId = 0;
-
-				}
-			}
-		}
-
+		
 		//setup neighbours
 		//left
 		int left = checkChunkExists(_chunk.chunkPos + new Vector2(-1,0));
@@ -239,6 +288,40 @@ public class VoxelCreation : MonoBehaviour {
 			chunks [back].forward = _chunk;
 			visibilityCheck.Add (chunks [back]);
 		}
+
+		return visibilityCheck;
+
+	}
+
+	List<chunk> generateChunkVoxels(chunk _chunk) {
+
+		List<chunk> visibilityCheck = new List<chunk> ();
+
+		_chunk.voxels = new voxel[(int)sizeOfChunk.x, (int)sizeOfChunk.y, (int)chunkHeight];
+
+		for (int a = 0; a < sizeOfChunk.x; a++) {
+			for (int b = 0; b < sizeOfChunk.y; b++) {
+				for (int c = 0; c < chunkHeight; c++) {
+
+					generateVoxel (_chunk, new vec3I (a, c, b), 0);
+
+					/*
+
+					_chunk.voxels [a, b, c] = new voxel();
+
+					_chunk.voxels [a, b, c].parent = _chunk;
+
+					_chunk.voxels [a, b, c].pos = new Vector3 (a * voxelSize.x, c * voxelSize.y, b * voxelSize.z) + new Vector3(_chunk.chunkPos.x * sizeOfChunk.x * voxelSize.x, 0, _chunk.chunkPos.y * sizeOfChunk.y * voxelSize.z);
+
+					_chunk.voxels [a, b, c].texId = 0;
+
+*/
+
+				}
+			}
+		}
+
+		visibilityCheck = setupChunkNeighbours (_chunk);
 
 		visibilityCheck.Add (_chunk);
 
@@ -373,9 +456,9 @@ public class VoxelCreation : MonoBehaviour {
 		//check if chunks are still needed
 		foreach (chunk _chunk in chunks) {
 			if (!checkWithinDistance (_chunk, playerPos)) {
-				if (_chunk.chunkEdited) {
+				//if (_chunk.chunkEdited) {
 					saveChunk (_chunk);
-				}
+				//}
 				deleteChunkVoxels (_chunk);
 				List<chunk> tempChunks = resetChunkNeighbours (_chunk);
 				foreach (chunk __chunk in tempChunks) {
@@ -467,6 +550,20 @@ public class VoxelCreation : MonoBehaviour {
 				saveChunk (_chunk);
 			}
 			saveChunks = false;
+			Debug.Log ("Saved");
+		}
+
+		//change texture
+		if (Input.GetKeyDown (KeyCode.LeftArrow)) {
+			if (textureType > 0) {
+				textureType--;
+			}
+		}
+
+		if (Input.GetKeyDown (KeyCode.RightArrow)) {
+			if (textureType < voxelMaterial.Count) {
+				textureType++;
+			}
 		}
 
 		//destroy/place
@@ -522,6 +619,7 @@ public class VoxelCreation : MonoBehaviour {
 		if (vox.destroyed) {
 			vox.destroyed = false;
 			vox.placed = true;
+			vox.texId = textureType;
 			voxelVisible (vox, testVoxel (vox));
 		}
 	}
@@ -694,6 +792,15 @@ public class voxel {
 	public bool placed;
 	public bool destroyed;
 	public int texId;
+
+	public voxel () {
+		parent = null;
+		obj = null;
+		pos = Vector3.zero;
+		placed = false;
+		destroyed = false;
+		texId = 0;
+	}
 }
 
 [System.Serializable]
@@ -702,6 +809,7 @@ public class chunk {
 	public Vector2 chunkPos;
 	public chunk left, right, forward, back;
 	public bool chunkEdited;
+	public int chunkState;
 }
 
 [System.Serializable]
