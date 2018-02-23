@@ -54,287 +54,6 @@ public class VoxelCreation : MonoBehaviour {
 
 	bool firstLoad = true;
 
-	void checkDirectoryExists(Vector2 pos) {
-		char split = Path.DirectorySeparatorChar;
-		string dir = Application.dataPath + split + directory;
-
-		if (!Directory.Exists(dir + split + pos.ToString())) {
-			Directory.CreateDirectory (dir + split + pos.ToString());
-		}
-	}
-
-	section loadSection (int sectionNumber, chunk currentChunk) {
-		section returnVal = null;
-		char split = Path.DirectorySeparatorChar;
-		string dir = Application.dataPath + split + directory + split;
-
-		if (File.Exists (dir + currentChunk.chunkPos.ToString () + split + "section " + sectionNumber.ToString() + ".txt")) {
-			StreamReader reader = new StreamReader (dir + currentChunk.chunkPos.ToString () + split + "section " + sectionNumber.ToString() + ".txt", true);
-
-			returnVal = new section (sizeOfChunk.x, sizeOfChunk.y, sectionHeight, currentChunk, sectionNumber);
-
-			string savedData = reader.ReadToEnd ();
-			string[] lines = savedData.Split (',');
-
-			if (lines.Length == 1) {
-				reader.Close ();
-				return returnVal;
-			}
-
-			int loop = -1;
-			int currentObjId = -2;
-			int currentLine = 0;
-
-			for (int a = 0; a < sizeOfChunk.x; a++) {
-				for (int b = 0; b < sizeOfChunk.y; b++) {
-					for (int c = 0; c < sectionHeight; c++) {
-						if (loop == -1) {
-							string action = lines [currentLine++];
-							if (action == "n") {
-								loop = int.Parse (lines [currentLine++]);
-								currentObjId = int.Parse (lines [currentLine++]);
-							} else {
-								if (action != "") {
-									generateVoxel (returnVal, new vec3I (a, c, b), int.Parse (action));
-								}
-							}
-						} 
-						if (loop != -1) {
-							generateVoxel (returnVal, new vec3I (a, c, b), currentObjId);
-							loop--;
-						}
-					}
-				}
-			}
-
-			reader.Close ();
-
-		}
-
-		return returnVal;
-	}
-
-	List<chunk> loadChunk (Vector2 pos, chunk currentChunk)
-	{
-		char split = Path.DirectorySeparatorChar;
-		string dir = Application.dataPath + split + directory + split;
-		List<chunk> visibilityCheck = new List<chunk> ();
-
-		if (File.Exists (dir + pos.ToString () + split + "ChunkData.txt")) {
-
-			StreamReader reader = new StreamReader (dir + pos.ToString () + split + "ChunkData.txt", true);
-
-			string inputTest = null;
-
-			currentChunk.yHeight = new double[sizeOfChunk.x, sizeOfChunk.y];
-
-			for (int a = 0; a < sizeOfChunk.x; a++) {
-				for (int b = 0; b < sizeOfChunk.y; b++) {
-					if (inputTest == "") {
-						currentChunk.yHeight = null;
-						continue;
-					}
-					inputTest = reader.ReadLine ();
-					if (inputTest == null) {
-						currentChunk.yHeight = null;
-						continue;
-					}
-					currentChunk.yHeight [a, b] = double.Parse (reader.ReadLine ());
-				}
-			}
-
-			reader.Close ();
-
-			if (currentChunk.yHeight == null) {
-				generateYHeight (currentChunk);
-			}
-
-		}
-
-		currentChunk.chunkPos = pos;
-
-		//change to loading individual chunks?
-		for (int a = 0; a < chunkSections; a++) {
-			section tempSection = loadSection (a, currentChunk);
-			if (tempSection != null) {
-				currentChunk.sections.Add (tempSection);
-			}
-		}
-
-		visibilityCheck = setupChunkNeighbours (currentChunk);
-		visibilityCheck.Add (currentChunk);
-		return visibilityCheck;
-
-	}
-
-	void loadWorldData() {
-		
-		char split = Path.DirectorySeparatorChar;
-		string dir = Application.dataPath + split + directory + split;
-
-		if (File.Exists (dir + "WorldData.txt")) {
-			StreamReader reader = new StreamReader (dir + "WorldData.txt", true);
-
-			if (reader.ReadLine () != sizeOfChunk.x.ToString () || reader.ReadLine () != sectionHeight.ToString () || reader.ReadLine () != sizeOfChunk.y.ToString ()
-			    || reader.ReadLine () != chunkSections.ToString () || reader.ReadLine () != voxelSize.x.ToString () || reader.ReadLine () != voxelSize.y.ToString ()
-				|| reader.ReadLine () != voxelSize.z.ToString () || reader.ReadLine() != smoothing.ToString()) {
-				reader.Close ();
-				Directory.Delete (dir, true);
-				return;
-			}
-
-			randSeed = float.Parse (reader.ReadLine ());
-
-			reader.Close ();
-		}
-	}
-
-	void saveWorldData() {
-		string dir = Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar;
-
-		if (!Directory.Exists(dir)) {
-			Directory.CreateDirectory (dir);
-		}
-
-		if (File.Exists (dir + "WorldData.txt")) {
-			File.Delete (dir + "WorldData.txt");
-		}
-
-		StreamWriter writer = new StreamWriter (dir + "WorldData.txt");
-
-		writer.WriteLine (sizeOfChunk.x);
-		writer.WriteLine (sectionHeight);
-		writer.WriteLine (sizeOfChunk.y);
-		writer.WriteLine (chunkSections);
-		writer.WriteLine (voxelSize.x);
-		writer.WriteLine (voxelSize.y);
-		writer.WriteLine (voxelSize.z);
-		writer.WriteLine (smoothing);
-		writer.WriteLine (randSeed);
-
-		writer.Close ();
-
-	}
-
-	void saveSection(section _section) {
-		string dir = Application.dataPath + Path.DirectorySeparatorChar + directory + Path.DirectorySeparatorChar;
-		char split = Path.DirectorySeparatorChar;
-
-		if (!worldDataSaved) {
-			saveWorldData ();
-			worldDataSaved = true;
-		}
-
-		checkDirectoryExists (_section.parent.chunkPos);
-
-		if (File.Exists (dir + _section.parent.chunkPos.ToString () + split + "section " + _section.sectionNum.ToString() + ".txt")) {
-			File.Delete (dir + _section.parent.chunkPos.ToString () + split + "section " + _section.sectionNum.ToString() + ".txt");
-		}
-
-		StreamWriter writer = new StreamWriter (dir + _section.parent.chunkPos.ToString () + split + "section " + _section.sectionNum.ToString() + ".txt");
-
-		if (_section.voxels [0, 0, 0] == null) {
-			writer.Close ();
-			return;
-		}
-
-		int loop = -1;
-		int prevObjID = _section.voxels [0, 0, 0].objID;
-		bool updateFile = false;
-		bool lastVoxel = false;
-
-		for (int a = 0; a < sizeOfChunk.x; a++) {
-			for (int b = 0; b < sizeOfChunk.y; b++) {
-				for (int c = 0; c < sectionHeight; c++) {
-
-					if ((a == sizeOfChunk.x - 1 && b == sizeOfChunk.y - 1 && c == sectionHeight - 1)) {
-						updateFile = true;
-						lastVoxel = true;
-					} else {
-						if (c == 0) {
-							if (_section.sectionNum == 0) {
-								loop++;
-								continue;
-							}
-						}
-					}
-
-					if (_section.voxels [a, b, c].objID != prevObjID) {
-						updateFile = true;
-					} else {
-						loop++;
-					}
-
-					if (updateFile) {
-						if (loop > 0) {
-							writer.Write ("n");
-							writer.Write (',');
-							writer.Write (loop);
-							writer.Write (',');
-						}
-						loop = 0;
-						writer.Write (prevObjID);
-						if (lastVoxel) {
-							if (_section.voxels [a, b, c].objID != prevObjID) {
-								writer.Write (',');
-								writer.Write (_section.voxels [a, b, c].objID);
-							}
-						} else {
-							writer.Write (',');
-						}
-						updateFile = false;
-						prevObjID = _section.voxels [a, b, c].objID;
-					}
-
-				}
-			}
-		}
-
-		writer.Close ();
-
-	}
-
-	bool saveChunk(chunk _chunk) {
-
-		if (!worldDataSaved) {
-			saveWorldData ();
-			worldDataSaved = true;
-		}
-
-		char split = Path.DirectorySeparatorChar;
-		string dir = Application.dataPath + split + directory + split;
-
-		checkDirectoryExists (_chunk.chunkPos);
-
-		if (File.Exists (dir + _chunk.chunkPos.ToString () + split + "ChunkData.txt")) {
-			File.Delete (dir + _chunk.chunkPos.ToString () + split + "ChunkData.txt");
-		}
-
-		StreamWriter writer = new StreamWriter (dir + _chunk.chunkPos.ToString () + split + "ChunkData.txt");
-
-		if (_chunk.yHeight != null) {
-
-			for (int a = 0; a < sizeOfChunk.x; a++) {
-				for (int b = 0; b < sizeOfChunk.y; b++) {
-					writer.WriteLine (_chunk.yHeight [a, b]);
-				}
-			}
-
-		}
-
-		foreach (int i in _chunk.requiredSections) {
-			writer.WriteLine (i);
-		}
-
-		writer.Close ();
-
-		foreach (section sec in _chunk.sections) {
-			saveSection(sec);
-		}
-
-		return true;
-	}
-
 	//change to only affect chunks everytime an update is needed
 	List<chunk> resetChunkNeighbours(chunk _chunk) {
 		List<chunk> visibilityReset = new List<chunk> ();
@@ -389,7 +108,7 @@ public class VoxelCreation : MonoBehaviour {
 		return true;
 	}
 
-	void generateVoxel(section parent, vec3I pos, int objID) {
+	public void generateVoxel(section parent, vec3I pos, int objID) {
 		parent.voxels [pos.x, pos.z, pos.y] = new voxel();
 
 		parent.voxels [pos.x, pos.z, pos.y].parent = parent;
@@ -412,7 +131,7 @@ public class VoxelCreation : MonoBehaviour {
 		}
 	}
 
-	List<chunk> setupChunkNeighbours(chunk _chunk) {
+	public List<chunk> setupChunkNeighbours(chunk _chunk) {
 
 		List<chunk> visibilityCheck = new List<chunk> ();
 		
@@ -485,7 +204,7 @@ public class VoxelCreation : MonoBehaviour {
 
 	}
 
-	double[,] generateYHeight(chunk _chunk) {
+	public double[,] generateYHeight(chunk _chunk) {
 
 		double[,] yHeight = new double[sizeOfChunk.x, sizeOfChunk.y];
 
@@ -584,7 +303,7 @@ public class VoxelCreation : MonoBehaviour {
 		}
 	}
 
-	void chunkVisibleCheck(chunk _chunk) {
+	public void chunkVisibleCheck(chunk _chunk) {
 
 		if (_chunk == null) {
 			return;
@@ -598,17 +317,102 @@ public class VoxelCreation : MonoBehaviour {
 
 	void sectionVisibileCheck(section _section) {
 
+		double heightDiff = 0;
+
 		for (int a = 0; a < sizeOfChunk.x; a++) {
 			for (int b = 0; b < sizeOfChunk.y; b++) {
 				for (int c = 0; c < sectionHeight; c++) {
 					if (_section.voxels [a, b, c] != null) {
 						if (!_section.voxels [a, b, c].destroyed) {
-							if (testVoxel (_section.voxels [a, b, c])) {
-								if (_section.voxels [a, b, c].obj == null) {
+							if (_section.voxels [a, b, c].objID != 0) {
+
+								/*
+
+								if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a, b] - (voxelSize.y * 2)) {
+									voxelVisible (_section.voxels [a, b, c], true);
+									continue;
+								} else {
+
+									if (a > 0) {
+										if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a - 1, b] - (voxelSize.y * 2)) {
+											voxelVisible (_section.voxels [a, b, c], true);
+											continue;
+										}
+
+									} else {
+										if (_section.parent.left != null) {
+											if (_section.voxels [a, b, c].pos.y >= _section.parent.left.yHeight [sizeOfChunk.x - 1, b] - (voxelSize.y * 2)) {
+												voxelVisible (_section.voxels [a, b, c], true);
+												continue;
+											}
+										}
+									}
+
+									if (a < sizeOfChunk.x - 1) {
+										if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a + 1, b] - (voxelSize.y * 2)) {
+											voxelVisible (_section.voxels [a, b, c], true);
+											continue;
+										}
+
+									} else {
+										if (_section.parent.right != null) {
+											if (_section.voxels [a, b, c].pos.y >= _section.parent.right.yHeight [0, b] - (voxelSize.y * 2)) {
+												voxelVisible (_section.voxels [a, b, c], true);
+												continue;
+											}
+										}
+									}
+
+
+									if (b > 0) {
+										if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a, b - 1] - (voxelSize.y * 2)) {
+											voxelVisible (_section.voxels [a, b, c], true);
+											continue;
+										}
+									}  else {
+										if (_section.parent.forward != null) {
+											if (_section.voxels [a, b, c].pos.y >= _section.parent.forward.yHeight [a, 0] - (voxelSize.y * 2)) {
+												voxelVisible (_section.voxels [a, b, c], true);
+												continue;
+											}
+										}
+									}
+
+									if (b < sizeOfChunk.y - 1) {
+										if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a, b + 1] - (voxelSize.y * 2)) {
+											voxelVisible (_section.voxels [a, b, c], true);
+											continue;
+										}
+									} else {
+										if (_section.parent.back != null) {
+											if (_section.voxels [a, b, c].pos.y >= _section.parent.back.yHeight [a, sizeOfChunk.y - 1] - (voxelSize.y * 2)) {
+												voxelVisible (_section.voxels [a, b, c], true);
+												continue;
+											}
+										}
+									}
+								}
+								*/
+
+								/*
+								 
+								if (Mathf.Abs((float)(_section.voxels [a, b, c].pos.y - _section.parent.yHeight [a, b])) <= voxelSize.y) {
 									voxelVisible (_section.voxels [a, b, c], true);
 								}
-							} else if (_section.voxels [a, b, c].obj != null) {
-								voxelVisible (_section.voxels [a, b, c], false);
+
+								*/
+
+
+
+								if (testVoxel (_section.voxels [a, b, c])) {
+									if (_section.voxels [a, b, c].obj == null) {
+										voxelVisible (_section.voxels [a, b, c], true);
+									}
+								} else if (_section.voxels [a, b, c].obj != null) {
+									voxelVisible (_section.voxels [a, b, c], false);
+								}
+
+
 							}
 						} else if (_section.voxels [a, b, c].obj != null) {
 							voxelVisible (_section.voxels [a, b, c], false);
@@ -668,7 +472,7 @@ public class VoxelCreation : MonoBehaviour {
 	}
 	*/
 
-	int checkChunkExists(Vector2 input) {
+	public int checkChunkExists(Vector2 input) {
 		for(int a = 0; a < chunks.Count; a++) {
 			if (input == chunks[a].chunkPos) {
 				return a;
@@ -677,133 +481,13 @@ public class VoxelCreation : MonoBehaviour {
 		return -1;
 	}
 
-	section forceSectionLoad(int sectionNum, Vector2 chunkPos, bool hidden = true) {
-
-		int chunkIndex = checkChunkExists (chunkPos);
-		chunk tempChunk = null;
-
-		if (chunkIndex != -1) {
-			tempChunk = chunks [chunkIndex];
-		} else {
-			tempChunk = forceChunkLoad (chunkPos);
-		}
-
-		return forceSectionLoad (sectionNum, tempChunk, hidden);
-	}
-
-	section forceSectionLoad(int sectionNum, chunk _chunk, bool hidden = true) {
-
-		_chunk.immune = 3;
-
-		section temp = loadSection (sectionNum, _chunk);
-
-		if (temp == null) {
-			foreach (chunk __chunk in createChunk (_chunk)) {
-				if (!hidden) {
-					chunkVisibleCheck (__chunk);
-				}
-			}
-		}
-
-		return temp;
-	}
-
-	chunk forceChunkLoad(Vector2 chunkPos, bool hidden = true) {
-		if (checkChunkExists (chunkPos) == -1) {
-
-			chunks.Add (new chunk ());
-
-			List<chunk> newVisibilityCheck = loadChunk (chunkPos, chunks [chunks.Count - 1]);
-
-			if (newVisibilityCheck.Count == 0) {
-
-				chunks [chunks.Count - 1].chunkPos = chunkPos + playerPos;
-
-				newVisibilityCheck = createChunk (chunks [chunks.Count - 1]);
-
-			}
-
-			if (!hidden) {
-				foreach (chunk _chunk in newVisibilityCheck) {
-					chunkVisibleCheck (_chunk);
-				}
-			}
-
-			chunks [chunks.Count - 1].immune = 3;
-
-			return chunks [chunks.Count - 1];
-		}
-
-		return null;
-	}
-
-	chunk posToChunk(Vector3 pos) {
-		int chunkIndex = checkChunkExists (new Vector2 (Mathf.FloorToInt (pos.x / (sizeOfChunk.x * voxelSize.x)), Mathf.FloorToInt (pos.z / (sizeOfChunk.y * voxelSize.z))));
-		if (chunkIndex != -1) {
-			return chunks[chunkIndex];
-		}
-		return null;
-	}
-
-	Vector2 posToChunkPos(Vector3 pos) {
-		return new Vector2 (Mathf.FloorToInt (pos.x / (sizeOfChunk.x * voxelSize.x)), Mathf.FloorToInt (pos.z / (sizeOfChunk.y * voxelSize.z)));
-	}
-
-	section posToSection(vec3I pos) {
-		return posToSection (pos.vec3 ());
-	}
-
-	section posToSection(Vector3 pos) {
-		chunk tempChunk = posToChunk (pos);
-		if (tempChunk != null) {
-			return posToSection (pos, tempChunk);
-		}
-		return null;
-	}
-
-	section posToSection(vec3I pos, chunk _chunk) {
-		return posToSection (pos.vec3 (), _chunk);
-	}
-
-	section posToSection(Vector3 pos, chunk _chunk) {
-		int sectionIndex = _chunk.checkSectionExists ((int)(pos.y / (sectionHeight * voxelSize.y)));
-
-		if (sectionIndex != -1) {
-			return _chunk.sections[sectionIndex];
-		}
-
-		return null;
-	}
-
-	int posToSectionPos(Vector3 pos, chunk _chunk) {
-		return (int)(pos.y / (sectionHeight * voxelSize.y));
-	}
-		
-	vec3I posToVoxel(vec3I pos, section _section) {
-		return posToVoxel(new Vector3(pos.x, pos.y, pos.z), _section);
-	}
-
-	vec3I posToVoxel(Vector3 pos, section _section) {
-		Vector3 _pos = pos;
-
-		_pos.x -= _section.parent.chunkPos.x * sizeOfChunk.x * voxelSize.x;
-		_pos.y -= _section.sectionNum * sectionHeight * voxelSize.y;
-		_pos.z -= _section.parent.chunkPos.y * sizeOfChunk.y * voxelSize.z;
-
-		_pos = Functions.vec3Div (_pos, voxelSize);
-
-		//turn pos into int
-		//return voxel position within chunk
-		return new vec3I (_pos);
-	}
-
 	void Start() {
 		player.GetComponent<Rigidbody> ().isKinematic = true;
 
 		randSeed = UnityEngine.Random.Range (1, int.MaxValue);
 		randSeed /= int.MaxValue;
 
-		loadWorldData ();
+		ChunkLoading.loadWorldData (this);
 
 		float size = sizeOfChunk.y;
 
@@ -827,9 +511,51 @@ public class VoxelCreation : MonoBehaviour {
 			heightMapRes = (int)Mathf.Pow(2, power) + 1;
 		}
 
+		char split = Path.DirectorySeparatorChar;
+		string dir = Application.dataPath + split + directory + split;
+
+		if (!Directory.Exists(dir)) {
+			Directory.CreateDirectory (dir);
+		}
+
+		if (!File.Exists (dir + "TestData.txt")) {
+			
+			StreamWriter tempWriter = new StreamWriter (dir + "TestData.txt");
+			for (int a = 0; a < 100000; a++) {
+				tempWriter.WriteLine (UnityEngine.Random.Range (0, 10));
+			}
+			tempWriter.Close ();
+			//File.Delete (dir + "TestData.txt");
+		}
+
+		StreamReader tempRead = new StreamReader (dir + "TestData.txt");
+
+		StreamWriter tempWrite = new StreamWriter (dir + "TestDataResults.txt");
+
+		string line = null;
+		int lineNum = 0;
+		int aimLine = 40000;
+
+		while ((line = tempRead.ReadLine ()) != null) {
+			if (lineNum == aimLine) {
+				tempWrite.WriteLine (UnityEngine.Random.Range (0, 10));
+			} else {
+				tempWrite.WriteLine (line);
+			}
+			lineNum++;
+		}
+
+		tempRead.Close ();
+		tempWrite.Close ();
+
+		File.Delete (dir + "TestData.txt");
+		File.Copy ((dir + "TestDataResults.txt"), (dir + "TestData.txt"));
+		File.Delete (dir + "TestDataResults.txt");
+
+
 	}
 
-	List<chunk> createChunk (chunk _chunk) {
+	public List<chunk> createChunk (chunk _chunk) {
 
 		List<chunk> returnVal = new List<chunk> ();
 
@@ -884,7 +610,7 @@ public class VoxelCreation : MonoBehaviour {
 				foreach (chunk _chunk in chunks) {
 					if (!checkWithinDistance (_chunk, playerPos)) {
 						if (_chunk.immune <= 0) {
-							saveChunk (_chunk);
+							ChunkSaving.saveChunk (this, _chunk);
 							deleteChunkVoxels (_chunk);
 							List<chunk> tempChunks = resetChunkNeighbours (_chunk);
 							foreach (chunk __chunk in tempChunks) {
@@ -902,7 +628,7 @@ public class VoxelCreation : MonoBehaviour {
 				//remove all chunks not needed
 				foreach (chunk _chunk in toDelete) {
 					toCheckVisibility.Remove (_chunk);
-					saveChunk (_chunk);
+					ChunkSaving.saveChunk (this, _chunk);
 					chunks.Remove (_chunk);
 				}
 
@@ -940,7 +666,7 @@ public class VoxelCreation : MonoBehaviour {
 				foreach (Vector2 chunkPos in chunksToGenerate) {
 					chunks.Add (new chunk ());
 
-					List<chunk> newVisibilityCheck = loadChunk (chunkPos + playerPos, chunks [chunks.Count - 1]);
+					List<chunk> newVisibilityCheck = ChunkLoading.loadChunk (this, chunkPos + playerPos, chunks [chunks.Count - 1]);
 
 					if ((newVisibilityCheck.Count == 0 && chunkPos != Vector2.zero) || chunks [chunks.Count - 1].sections.Count == 0) {
 
@@ -983,7 +709,7 @@ public class VoxelCreation : MonoBehaviour {
 		}
 		if (saveChunks) {
 			foreach (chunk _chunk in chunks) {
-				saveChunk (_chunk);
+				ChunkSaving.saveChunk (this, _chunk);
 			}
 			saveChunks = false;
 			Debug.Log ("Saved");
@@ -1006,11 +732,11 @@ public class VoxelCreation : MonoBehaviour {
 			RaycastHit hit;
 			if (Physics.Raycast (Camera.main.ScreenPointToRay (Input.mousePosition), out hit)) {
 				Vector3 hitPos = hit.collider.transform.position;
-				chunk tempChunk = posToChunk (hitPos);
+				chunk tempChunk = PositionCalculations.posToChunk (this, hitPos);
 				if (tempChunk != null) {
-					section tempSection = posToSection (hitPos, tempChunk);
+					section tempSection = PositionCalculations.posToSection (this, hitPos, tempChunk);
 					if (tempSection != null) {
-						vec3I voxelPos = posToVoxel (hitPos, tempSection);
+						vec3I voxelPos = PositionCalculations.posToVoxel (this, hitPos, tempSection);
 						debugVoxel(tempSection.voxels[voxelPos.x, voxelPos.z, voxelPos.y]);
 					}
 				}
@@ -1030,17 +756,17 @@ public class VoxelCreation : MonoBehaviour {
 			RaycastHit hit;
 			if (Physics.Raycast (Camera.main.ScreenPointToRay (Input.mousePosition), out hit)) {
 				Vector3 hitPos = hit.collider.transform.position;
-				chunk tempChunk = posToChunk (hitPos);
+				chunk tempChunk = PositionCalculations.posToChunk (this, hitPos);
 				if (tempChunk == null) {
-					tempChunk = forceChunkLoad (posToChunkPos (hitPos));
+					tempChunk = ChunkLoading.forceChunkLoad (this, PositionCalculations.posToChunkPos (this, hitPos));
 				}
 				if (tempChunk != null) {
-					section tempSection = posToSection (hitPos, tempChunk);
+					section tempSection = PositionCalculations.posToSection (this, hitPos, tempChunk);
 					if (tempSection == null) {
-						tempSection = forceSectionLoad (posToSectionPos (hitPos, tempChunk), tempChunk);
+						tempSection = ChunkLoading.forceSectionLoad (this,PositionCalculations.posToSectionPos (this, hitPos, tempChunk), tempChunk);
 					}
 					if (tempSection != null) {
-						vec3I voxelPos = posToVoxel (hitPos, tempSection);
+						vec3I voxelPos = PositionCalculations.posToVoxel (this, hitPos, tempSection);
 						destroyVoxel (tempSection.voxels [voxelPos.x, voxelPos.z, voxelPos.y]);
 					}
 				}
@@ -1051,17 +777,17 @@ public class VoxelCreation : MonoBehaviour {
 			RaycastHit hit;
 			if (Physics.Raycast (Camera.main.ScreenPointToRay (Input.mousePosition), out hit)) {
 				Vector3 hitPos = hit.collider.transform.position + returnSideHitPos(hit);
-				chunk tempChunk = posToChunk (hitPos);
+				chunk tempChunk = PositionCalculations.posToChunk (this, hitPos);
 				if (tempChunk == null) {
-					tempChunk = forceChunkLoad (posToChunkPos (hitPos));
+					tempChunk = ChunkLoading.forceChunkLoad (this, PositionCalculations.posToChunkPos (this, hitPos));
 				}
 				if (tempChunk != null) {
-					section tempSection = posToSection (hitPos, tempChunk);
+					section tempSection = PositionCalculations.posToSection (this, hitPos, tempChunk);
 					if (tempSection == null) {
-						tempSection = forceSectionLoad (posToSectionPos (hitPos, tempChunk), tempChunk);
+						tempSection = ChunkLoading.forceSectionLoad (this, PositionCalculations.posToSectionPos (this, hitPos, tempChunk), tempChunk);
 					}
 					if (tempSection != null) {
-						vec3I voxelPos = posToVoxel (hitPos, tempSection);
+						vec3I voxelPos = PositionCalculations.posToVoxel (this, hitPos, tempSection);
 						placeObject (voxelPos, tempSection);
 					}
 				}
@@ -1082,19 +808,19 @@ public class VoxelCreation : MonoBehaviour {
 				for (float c = -explosionDist; c < explosionDist; c++) {
 					if (Vector3.Distance (position + Functions.vec3Times (new Vector3 (a, b, c), voxelSize), position) < explosionDist) {
 						Vector3 hitPos = position + Functions.vec3Times (new Vector3 (a, b, c), voxelSize);
-						chunk tempChunk = posToChunk (hitPos);
+						chunk tempChunk = PositionCalculations.posToChunk (this, hitPos);
 						if (tempChunk == null) {
-							tempChunk = forceChunkLoad (posToChunkPos (hitPos));
+							tempChunk = ChunkLoading.forceChunkLoad (this, PositionCalculations.posToChunkPos (this, hitPos));
 						}
 						if (tempChunk != null) {
-							section tempSection = posToSection (hitPos, tempChunk);
+							section tempSection = PositionCalculations.posToSection (this, hitPos, tempChunk);
 							if (tempSection == null) {
-								tempSection = forceSectionLoad (posToSectionPos (hitPos, tempChunk), tempChunk);
+								tempSection = ChunkLoading.forceSectionLoad (this, PositionCalculations.posToSectionPos (this, hitPos, tempChunk), tempChunk);
 							}
 							if (tempSection != null) {
-								vec3I voxelPos = posToVoxel (hitPos, tempSection);
+								vec3I voxelPos = PositionCalculations.posToVoxel (this, hitPos, tempSection);
 								if (testVoxelPosInBounds (voxelPos)) {
-									if (position + new Vector3 (a, b, c) != position) {
+									if (position + Functions.vec3Times (new Vector3 (a, b, c), voxelSize) != position) {
 										if (tempSection.voxels [voxelPos.x, voxelPos.z, voxelPos.y] != null) {
 											if (tempSection.voxels [voxelPos.x, voxelPos.z, voxelPos.y].obj != null) {
 												if (tempSection.voxels [voxelPos.x, voxelPos.z, voxelPos.y].obj.name == "TNT") {
@@ -1219,16 +945,16 @@ public class VoxelCreation : MonoBehaviour {
 	}
 
 	//find Neighbours for sections
-	List<voxel> findNeighbours(Vector3 pos, section _section = null) {
+	public List<voxel> findNeighbours(Vector3 pos, section _section = null) {
 		List<voxel> returnVoxels = new List<voxel>();
 		section voxelSection = _section;
 		if (voxelSection == null) {
-			voxelSection = posToSection (pos, _section.parent);
+			voxelSection = PositionCalculations.posToSection (this, pos, _section.parent);
 			if (voxelSection == null) {
 				return null;
 			}
 		}
-		vec3I voxelPos = posToVoxel (pos, voxelSection);
+		vec3I voxelPos = PositionCalculations.posToVoxel (this, pos, voxelSection);
 
 		//test left
 		if (voxelPos.x > 0) {

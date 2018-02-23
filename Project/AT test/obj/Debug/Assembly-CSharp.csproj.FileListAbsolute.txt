@@ -62,7 +62,6 @@ H:\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.VR.xml
 H:\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.csprojResolveAssemblyReference.cache
 H:\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.dll
 H:\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.pdb
-D:\Desktop\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.csprojResolveAssemblyReference.cache
 D:\Desktop\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Assembly-CSharp.dll
 D:\Desktop\Git\AT-streaming\Project\AT test\Temp\bin\Debug\Assembly-CSharp.pdb
 D:\Desktop\Git\AT-streaming\Project\AT test\Temp\bin\Debug\nunit.framework.dll
@@ -92,5 +91,6 @@ D:\Desktop\Git\AT-streaming\Project\AT test\Temp\bin\Debug\nunit.framework.xml
 D:\Desktop\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.Analytics.xml
 D:\Desktop\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.HoloLens.xml
 D:\Desktop\Git\AT-streaming\Project\AT test\Temp\bin\Debug\UnityEngine.VR.xml
+D:\Desktop\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.csprojResolveAssemblyReference.cache
 D:\Desktop\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.dll
 D:\Desktop\Git\AT-streaming\Project\AT test\obj\Debug\Assembly-CSharp.pdb
