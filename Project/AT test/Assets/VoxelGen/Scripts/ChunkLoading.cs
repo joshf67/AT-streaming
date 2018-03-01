@@ -161,7 +161,7 @@ public class ChunkLoading {
 		if (temp == null) {
 			foreach (chunk __chunk in voxGen.createChunk (_chunk)) {
 				if (!hidden) {
-					voxGen.chunkVisibleCheck (__chunk);
+					voxGen.toCheckVisibility.Add(__chunk);
 				}
 			}
 		}
@@ -192,7 +192,7 @@ public class ChunkLoading {
 			}
 
 			foreach (chunk _chunk in newVisibilityCheck) {
-				voxGen.chunkVisibleCheck (_chunk);
+				voxGen.toCheckVisibility.Add(_chunk);
 			}
 
 			voxGen.chunks [voxGen.chunks.Count - 1].immune = 3;

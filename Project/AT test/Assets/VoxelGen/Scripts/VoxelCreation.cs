@@ -30,13 +30,17 @@ public class VoxelCreation : MonoBehaviour {
 	public Vector2 chunkRange = Vector2.zero;
 	public Vector2 sectionRange = Vector2.zero;
 	public bool enableDynamicChunkLoading = true;
+	public int opsPerLoad = 0;
 	public bool debugMode = false;
 	public int smoothing = 0;
 	public float perlinDist;
 	public float randSeed;
 	public float noise1Effect = 0;
 	public float noise2Effect = 0;
-	public int heightMapRes = 0;
+
+	public List<chunk> toCheckVisibility = new List<chunk> ();
+	IEnumerator currentCoroutine = null;		
+	IEnumerator currentSection = null;
 
 	[Header("Voxel details")]
 	public Vector3 voxelSize;
@@ -112,6 +116,8 @@ public class VoxelCreation : MonoBehaviour {
 		parent.voxels [pos.x, pos.z, pos.y] = new voxel();
 
 		parent.voxels [pos.x, pos.z, pos.y].parent = parent;
+
+		parent.voxels [pos.x, pos.z, pos.y].voxelPos = pos;
 
 		//need to change y calculation to section instead of global
 		parent.voxels [pos.x, pos.z, pos.y].pos = new Vector3 (pos.x * voxelSize.x, pos.y * voxelSize.y, pos.z * voxelSize.z)
@@ -303,108 +309,51 @@ public class VoxelCreation : MonoBehaviour {
 		}
 	}
 
-	public void chunkVisibleCheck(chunk _chunk) {
+	IEnumerator chunkVisibleCheck(chunk _chunk) {
 
-		if (_chunk == null) {
-			return;
+		List<section> sec = new List<section>();
+		foreach (section sect in _chunk.sections) {
+			sec.Add (sect);
 		}
 
-		foreach (section sec in _chunk.sections) {
-			sectionVisibileCheck (sec);
-		}
+		bool done = false;
+
+		do {
+			if (currentSection == null) {
+				if (sec.Count != 0) {
+					currentSection = sectionVisibileCheck (sec[0]);
+					sec.RemoveAt(0);
+					StartCoroutine (currentSection);
+				} else {
+					done = true;
+				}
+			}
+			yield return null;
+		} while (!done);
+
+		//foreach (section sec in _chunk.sections) {
+		//	//sectionVisibileCheck (sec);
+		//	currentSection = sectionVisibileCheck (sec);
+		//	StartCoroutine (currentSection);
+		//}
+
+		currentCoroutine = null;
 
 	}
 
-	void sectionVisibileCheck(section _section) {
+	IEnumerator sectionVisibileCheck(section _section) {
 
-		double heightDiff = 0;
+		int ops = 0;
 
 		for (int a = 0; a < sizeOfChunk.x; a++) {
 			for (int b = 0; b < sizeOfChunk.y; b++) {
 				for (int c = 0; c < sectionHeight; c++) {
+
 					if (_section.voxels [a, b, c] != null) {
 						if (!_section.voxels [a, b, c].destroyed) {
 							if (_section.voxels [a, b, c].objID != 0) {
 
-								/*
-
-								if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a, b] - (voxelSize.y * 2)) {
-									voxelVisible (_section.voxels [a, b, c], true);
-									continue;
-								} else {
-
-									if (a > 0) {
-										if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a - 1, b] - (voxelSize.y * 2)) {
-											voxelVisible (_section.voxels [a, b, c], true);
-											continue;
-										}
-
-									} else {
-										if (_section.parent.left != null) {
-											if (_section.voxels [a, b, c].pos.y >= _section.parent.left.yHeight [sizeOfChunk.x - 1, b] - (voxelSize.y * 2)) {
-												voxelVisible (_section.voxels [a, b, c], true);
-												continue;
-											}
-										}
-									}
-
-									if (a < sizeOfChunk.x - 1) {
-										if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a + 1, b] - (voxelSize.y * 2)) {
-											voxelVisible (_section.voxels [a, b, c], true);
-											continue;
-										}
-
-									} else {
-										if (_section.parent.right != null) {
-											if (_section.voxels [a, b, c].pos.y >= _section.parent.right.yHeight [0, b] - (voxelSize.y * 2)) {
-												voxelVisible (_section.voxels [a, b, c], true);
-												continue;
-											}
-										}
-									}
-
-
-									if (b > 0) {
-										if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a, b - 1] - (voxelSize.y * 2)) {
-											voxelVisible (_section.voxels [a, b, c], true);
-											continue;
-										}
-									}  else {
-										if (_section.parent.forward != null) {
-											if (_section.voxels [a, b, c].pos.y >= _section.parent.forward.yHeight [a, 0] - (voxelSize.y * 2)) {
-												voxelVisible (_section.voxels [a, b, c], true);
-												continue;
-											}
-										}
-									}
-
-									if (b < sizeOfChunk.y - 1) {
-										if (_section.voxels [a, b, c].pos.y >= _section.parent.yHeight [a, b + 1] - (voxelSize.y * 2)) {
-											voxelVisible (_section.voxels [a, b, c], true);
-											continue;
-										}
-									} else {
-										if (_section.parent.back != null) {
-											if (_section.voxels [a, b, c].pos.y >= _section.parent.back.yHeight [a, sizeOfChunk.y - 1] - (voxelSize.y * 2)) {
-												voxelVisible (_section.voxels [a, b, c], true);
-												continue;
-											}
-										}
-									}
-								}
-								*/
-
-								/*
-								 
-								if (Mathf.Abs((float)(_section.voxels [a, b, c].pos.y - _section.parent.yHeight [a, b])) <= voxelSize.y) {
-									voxelVisible (_section.voxels [a, b, c], true);
-								}
-
-								*/
-
-
-
-								if (testVoxel (_section.voxels [a, b, c])) {
+								if (testVoxel (_section.voxels [a, b, c], true)) {
 									if (_section.voxels [a, b, c].obj == null) {
 										voxelVisible (_section.voxels [a, b, c], true);
 									}
@@ -412,15 +361,25 @@ public class VoxelCreation : MonoBehaviour {
 									voxelVisible (_section.voxels [a, b, c], false);
 								}
 
-
 							}
 						} else if (_section.voxels [a, b, c].obj != null) {
 							voxelVisible (_section.voxels [a, b, c], false);
 						}
 					}
+
+					//stop current loading
+					if (ops == opsPerLoad) {
+						ops = 0;
+						yield return null;
+					}
+
 				}
+				ops++;
 			}
 		}
+
+		currentSection = null;
+		yield return null;
 	}
 
 	/*
@@ -601,7 +560,6 @@ public class VoxelCreation : MonoBehaviour {
 			Mathf.Floor((player.transform.position.z + (voxelSize.z / 2)) / (sizeOfChunk.y * voxelSize.z)));
 
 		List<chunk> toDelete = new List<chunk>();
-		List<chunk> toCheckVisibility = new List<chunk> ();
 
 		if (enableDynamicChunkLoading) {
 
@@ -689,11 +647,13 @@ public class VoxelCreation : MonoBehaviour {
 
 		prevPos = player.transform.position;
 
-		//check visibility on chunks needed
-		foreach (chunk _chunk in toCheckVisibility) {
-			chunkVisibleCheck (_chunk);
+		if (currentCoroutine == null) {
+			if (toCheckVisibility.Count != 0) {
+				currentCoroutine = chunkVisibleCheck (toCheckVisibility [0]);
+				StartCoroutine (currentCoroutine);
+				toCheckVisibility.RemoveAt (0);
+			}
 		}
-
 
 		if (firstPass) {
 			foreach (chunk _chunk in chunks) {
@@ -911,11 +871,44 @@ public class VoxelCreation : MonoBehaviour {
 		return returnVal;
 	}
 
-	bool testVoxel(voxel gridVoxel) {
+	bool testVoxel(voxel gridVoxel, bool ignoreSections = false) {
 		List<voxel> neighbours = findNeighbours(gridVoxel.pos, gridVoxel.parent);
 
-		if (neighbours.Count != 6) {
-			return true;
+
+		if (ignoreSections) {
+			int ignoreCount = 6;
+
+			if (gridVoxel.voxelPos.x == 0) {
+				ignoreCount--;
+			}
+
+			if (gridVoxel.voxelPos.x == sizeOfChunk.x - 1) {
+				ignoreCount--;
+			}
+
+			if (gridVoxel.voxelPos.z == 0) {
+				ignoreCount--;
+			}
+
+			if (gridVoxel.voxelPos.z == sizeOfChunk.y - 1) {
+				ignoreCount--;
+			}
+
+			if (gridVoxel.voxelPos.y == 0) {
+				ignoreCount--;
+			}
+
+			if (gridVoxel.voxelPos.y == sectionHeight - 1) {
+				ignoreCount--;
+			}
+
+			if (neighbours.Count < ignoreCount) {
+				return true;
+			}
+		} else {
+			if (neighbours.Count != 6) {
+				return true;
+			}
 		}
 
 		foreach (voxel vox in neighbours) {
@@ -1095,6 +1088,7 @@ public class voxel {
 	public section parent;
 	public GameObject obj;
 	public Vector3 pos;
+	public vec3I voxelPos;
 	public bool placed;
 	public bool destroyed;
 	public bool destroyable;
